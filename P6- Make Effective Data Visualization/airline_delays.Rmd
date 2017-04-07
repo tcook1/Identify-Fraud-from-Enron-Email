@@ -1,0 +1,64 @@
+---
+title: "Loans"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+```
+
+```{r}
+setwd("/Users/tcook/Desktop/P6/")
+
+delays <- read.csv("airline_delays_full.csv")
+```
+
+```{r}
+detach("package:dplyr", character.only = TRUE)
+library("dplyr", character.only = TRUE)
+delays$arr_delay <- delays$X.arr_delay
+delays_sub <- select(delays, year, carrier_name, arr_delay, arr_flights)
+
+```
+
+```{r}
+### Clean data
+
+# Convert to numbers
+delays_sub$year <- as.numeric(delays_sub$year)
+delays_sub$X.arr_delay <- as.numeric(delays_sub$X.arr_delay)
+delays_sub$arr_flights <- as.numeric(delays_sub$arr_flights)
+
+# Deal with NANs
+delays_sub[is.na(delays_sub)] <- 0
+
+sum(is.na(delays_sub$arr_delay))
+sum(is.na(delays_sub$arr_flights))
+
+```
+
+```{r}
+# Group data
+grouped_data <- delays_sub %>% 
+  group_by(carrier_name, year) %>% 
+  summarise(minsDelayed=(sum(arr_delay) / sum(arr_flights)))
+
+grouped_data$minsDelayed <- round(grouped_data$minsDelayed, digits = 2)
+
+```
+
+```{r}
+# Export as CSV
+write.csv(grouped_data, "airline_delays_grouped.csv", row.names = FALSE)
+```
+
+
