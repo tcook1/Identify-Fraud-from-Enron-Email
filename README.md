@@ -1,7 +1,8 @@
 # Udacity-s-Data-Analyst-Nanodegree
 ## By Trevor Cook
 
-![Certificate](https://raw.githubusercontent.com/tcook1/Udacity-s-Data-Analyst-Nanodegree/master/certificate.pdf)
+![Certificate](https://raw.githubusercontent.com/tcook1/Udacity-s-Data-Analyst-Nanodegree/edit/master/certificate.jpg)
+
 
 ### About
 This repository contains my project work for Udacity's [Data Analyst Nanodegree](https://www.udacity.com/course/data-analyst-nanodegree--nd002).
