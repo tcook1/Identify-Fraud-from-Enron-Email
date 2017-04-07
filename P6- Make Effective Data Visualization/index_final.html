@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+    <script type="text/javascript">
+    </script>
+  </head>
+<body>
+  <script type="text/javascript">
+  "use strict";
+
+  var margin = {top: 10, right: 60, bottom: 20, left: 60},
+      width = 600,
+      height = 1200 - margin.top - margin.bottom;
+
+  // Slope lines to occupy 40% of the width of svg
+  var leftX = (width/2) - width*.2,
+      rightX = (width/2) + width*.2;
+
+  // Color variables
+  var hoverDown = "rgb(99, 198, 255)";
+  var hoverUp = "rgb(255, 99, 98)";
+  var HawaiianColor = "rgb(232, 123, 21)"
+
+
+  var head = d3.select("body")
+                .append("span")
+                .attr("class", "head");
+
+  head
+    .append("h2")
+    .text("Hawaiian Airlines Leads Industry in Lowest Delay Times");
+
+  head
+    .append("h4")
+    .text("By Trevor Cook");
+
+  head
+    .append("p")
+    .text("The following visualization shows flight delays, in average minutes per flight, for each airline.")
+
+  head
+    .append("p")
+    .text("Hawaiian Airlines Inc. ranks among the top airlines in terms of flight delay times.")
+
+
+
+  var format = d3.time.format("%Y");
+  var delays;
+
+  // Load CSV data
+  d3.csv("airline_delays_grouped.csv", function(data) {
+    delays = data;
+    delays.forEach(function(d) {
+      d['carrier_name'] = d['carrier_name'];
+      d['year'] = format.parse(d['year']).getUTCFullYear();
+      d['minsDelayed'] = +d['minsDelayed'];
+    })
+
+  var dropdowns = head.append("div")
+                      .attr("class", "dropdowns")
+                      .append("p");
+
+  dropdowns
+      .text("Compare Average Minutes Delayed in the following two years: ");
+
+
+    var dropdownLeft = dropdowns
+                              .append("select")
+                              .attr("class", "dropdown")
+                              .attr("id", "dropdown1")
+                              .on("change", changeDates);
+
+
+    var dropdownRight = dropdowns
+                                .append("select")
+                                .attr("class", "dropdown")
+                                .attr("id", "dropdown2")
+                                .on("change", changeDates);
+
+
+    var svg = d3.select("body")
+                .append("span")
+                .attr("id", "chart")
+                  .append("svg")
+                  .attr("width", width)
+                  .attr("height", height + margin.top + margin.bottom)
+                  .attr("margin-top", "0px");
+
+
+
+
+    // Load data into dropdown
+    dropdownLeft.selectAll("option")
+            .data(delays, function(d) { return d.year; })
+            .enter()
+            .append("option")
+            .text(function(d) { return d.year; });
+
+    dropdownRight.selectAll("option")
+            .data(delays, function(d) { return d.year; })
+            .enter()
+            .append("option")
+            .text(function(d) { return d.year; });
+
+
+    // Set initial dropdown value
+    dropdownLeft.property("value", "2014");
+    dropdownRight.property("value", "2015");
+
+    changeDates();
+
+
+  function changeDates () {
+    var leftYear = dropdownLeft.property("value");
+    var rightYear = dropdownRight.property("value");
+
+
+    // Add x Axis
+    var xScale = d3.scale.ordinal()
+          .range([leftX, rightX])
+          .domain([leftYear, rightYear]);
+
+    var xAxis = d3.svg.axis()
+                  .scale(xScale)
+                  .orient("bottom");
+
+    svg.append("g")
+      .attr("class", "axis")
+      .attr("transform", "translate(0, " + height + ")");
+
+    d3.select(".axis")
+      .transition()
+      .call(xAxis)
+      .selectAll("text")
+        .style("text-anchor", function(d) {
+          if (d === leftYear) { return "end"; }
+          else { return "start"; }
+        });
+
+
+    // Add data source link
+    svg.append("g")
+        .attr("class", "source")
+        .attr("transform", "translate(0," + (height - 10) + ")");
+
+    d3.select(".source")
+      .append("a")
+      .attr("xlink:href", "https://www.transtats.bts.gov/OT_Delay/OT_DelayCause1.asp")
+        .append("text")
+        .text("Data Source: RITA")
+        .attr("x", width*.81)
+        .attr("y", 30)
+        .attr("fill", "blue");
+
+
+    var nested = d3.nest()
+              .key(function(d) {
+                return d.year;
+              })
+              .entries(delays);
+
+    // Filter data based on selections
+    var leftData = nested.filter(function(d) {
+                return d['key'] === leftYear;
+              });
+
+    var rightData = nested.filter(function(d) {
+            return d['key'] === rightYear;
+          });
+
+    leftData = leftData[0].values;
+    rightData = rightData[0].values;
+
+    updateData(svg, leftData, rightData);
+  }
+
+
+  function updateData (svg, left, right) {
+
+    // Find max minsDelayed value of left and right data
+    var leftMax = d3.max(left, function(d) { return d.minsDelayed; })
+    var rightMax = d3.max(right, function(d) { return d.minsDelayed; })
+
+    var yScale = d3.scale.linear()
+                    .domain([0, d3.max([leftMax, rightMax])])
+                    .range([height, margin.top]);
+
+
+    // Combine left and right data
+    var slopes = [];
+    for (var i = 0; i < left.length; i++) {
+      var slope = {};
+
+      for (var j = 0; j < right.length; j++) {
+        if (left[i].carrier_name === right[j].carrier_name) {
+          slope.leftMinsDelayed = left[i].minsDelayed;
+          slope.leftY = yScale(slope.leftMinsDelayed);
+          slope.leftX = leftX;
+          slope.rightMinsDelayed = right[j].minsDelayed;
+          slope.rightY = yScale(slope.rightMinsDelayed);
+          slope.rightX = rightX;
+          slope.airline = left[i].carrier_name;
+          break;
+        }
+
+      };
+      // Ignore Objects that do not contain two years worth of data
+      if (Object.keys(slope).length !== 0) {
+        slopes.push(slope);
+      }
+    };
+
+    // Create space between elements on yAxis that are overlapping
+    adjustYAxis(slopes);
+
+
+    // Add slope lines to svg
+    var slopeContainer = svg.select('.slopeContainer')
+    if(slopeContainer.empty()){
+      slopeContainer = svg.append("g")
+                          .attr("class","slopeContainer");
+    }
+
+    var lines = slopeContainer.selectAll("line").data(slopes);
+
+    lines.enter().append("line")
+        .attr('x1', leftX)
+        .attr('x2', rightX)
+        .attr('y1',function(d){return d.leftY;})
+        .attr('y2',function(d){return d.rightY;})
+        .attr('opacity', function(d) {
+          if (d.airline === "Hawaiian Airlines Inc.") { return 2; }
+          else { return .5; }
+        })
+        .attr('stroke', function(d) {
+          if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+          else { return "gray"; }
+        })
+        .attr("class", function(d) {return d.airline;});
+
+
+    lines.on("mouseover", function(d) { mouseOver(d) })
+    lines.on("mouseout", function(d) { mouseOut(d) })
+
+
+    lines.transition().duration(1000)
+                           .attr('y1',function(d){return d.leftY;})
+                           .attr('y2',function(d){return d.rightY;})
+                           .attr('stroke', function(d) {
+                              if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                              else { return "gray"; }
+                            })
+                           .attr('opacity', function(d) {
+                              if (d.airline === "Hawaiian Airlines Inc.") { return 2; }
+                              else { return .5; }
+                            });
+
+
+    lines.exit().remove();
+
+
+
+    // Add left minsDelayed text
+    var leftMinsText = svg.select(".leftMinsText")
+    if(leftMinsText.empty()){
+      leftMinsText = svg.append("g")
+                    .attr("class", "leftMinsText");
+    }
+
+    var leftMins = leftMinsText.selectAll("text")
+                                .data(slopes);
+
+    leftMins.enter().append("text")
+                .attr("x", leftX - 5)
+                .attr('y',function(d){return d.leftY;})
+                .attr("text-anchor", "end")
+                .attr("alignment-baseline", "middle")
+                .attr("class", function(d) {return d.airline;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+    leftMins.text(function(d) { return d.leftMinsDelayed; })
+                .transition().duration(1000)
+                .attr('y',function(d){return d.leftY;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+
+    leftMins.on("mouseover", function(d) { mouseOver(d) })
+    leftMins.on("mouseout", function(d) { mouseOut(d) })
+
+
+    leftMins.exit().remove();
+
+
+
+    // Add left airline text
+    var leftAirlineText = svg.select(".leftAirlineText")
+    if(leftAirlineText.empty()){
+      leftAirlineText = svg.append("g")
+                    .attr("class", "leftAirlineText");
+    }
+
+    var leftAirline = leftAirlineText.selectAll("text")
+                                .data(slopes);
+
+    leftAirline.enter().append("text")
+                .attr("x", leftX - 150)
+                .attr('y',function(d){return d.leftY;})
+                .attr("text-anchor", "start")
+                .attr("alignment-baseline", "middle")
+                .attr("class", function(d) {return d.airline;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+    leftAirline.text(function(d) { return d.airline; })
+                .transition().duration(1000)
+                .attr('y',function(d){return d.leftY;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+    leftAirline.on("mouseover", function(d) { mouseOver(d) })
+    leftAirline.on("mouseout", function(d) { mouseOut(d) })
+
+    leftAirline.exit().remove();
+
+
+
+    // Add right minsDelayed text
+    var rightMinsText = svg.select(".rightMinsText")
+    if(rightMinsText.empty()){
+      rightMinsText = svg.append("g")
+                    .attr("class", "rightMinsText");
+    }
+
+    var rightMins = rightMinsText.selectAll("text")
+                                .data(slopes);
+
+    rightMins.enter().append("text")
+                .attr("x", rightX + 5)
+                .attr('y',function(d){return d.rightY;})
+                .attr("text-anchor", "start")
+                .attr("alignment-baseline", "middle")
+                .attr("class", function(d) {return d.airline;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+    rightMins.text(function(d) { return d.rightMinsDelayed; })
+                .transition().duration(1000)
+                .attr('y',function(d){return d.rightY;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+    rightMins.on("mouseover", function(d) { mouseOver(d) })
+    rightMins.on("mouseout", function(d) { mouseOut(d) })
+
+
+    rightMins.exit().remove();
+
+
+
+    // Add right airline text
+    var rightAirlineText = svg.select(".rightAirlineText")
+    if(rightAirlineText.empty()){
+      rightAirlineText = svg.append("g")
+                    .attr("class", "rightAirlineText");
+    }
+
+    var rightAirline = rightAirlineText.selectAll("text")
+                                .data(slopes);
+
+    rightAirline.enter().append("text")
+                .attr("x", rightX + 150)
+                .attr('y',function(d){return d.rightY;})
+                .attr("text-anchor", "end")
+                .attr("alignment-baseline", "middle")
+                .attr("class", function(d) {return d.airline;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+    rightAirline.text(function(d) { return d.airline; })
+                .transition().duration(1000)
+                .attr('y',function(d){return d.rightY;})
+                .attr("fill", function(d) {
+                  if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+                });
+
+    rightAirline.on("mouseover", function(d) { mouseOver(d) })
+    rightAirline.on("mouseout", function(d) { mouseOut(d) })
+
+    rightAirline.exit().remove();
+
+
+
+    function mouseOver(d) {
+      // This function determines which element is being hovered over
+      // and adjusts the attributes of these elements
+
+      var leftY = d.leftY;
+      var rightY = d.rightY;
+
+
+      var lines = d3.selectAll("line")[0];
+      lines.forEach(function(i) {
+        var val = i.attributes.y2.value;
+
+        if (rightY == val) {
+          d3.select(i)
+            .attr('opacity', 1)
+            .attr('stroke', function(d) {
+              if (d.leftY < d.rightY) { return hoverDown; }
+              else { return hoverUp; }
+            })
+            .attr('stroke-width', 2)
+            .transition()
+            .duration(300)
+        };
+      })
+
+
+      var text = d3.selectAll("text")[0];
+      text.forEach(function(i) {
+        var val = i.attributes.y.value
+
+        if (leftY == val || rightY == val) {
+          d3.select(i)
+            .attr("font-size", "10px")
+            .attr("fill", function(d) {
+              if (d.leftY < d.rightY) { return hoverDown; }
+              else { return hoverUp; }
+            })
+            .transition()
+            .duration(300);
+        };
+      })
+    }
+
+
+    function mouseOut(d) {
+      // This function determines which element is being hovered over
+      // and adjusts the attributes of these elements
+
+      var leftY = d.leftY;
+      var rightY = d.rightY;
+
+
+      var lines = d3.selectAll("line")[0];
+      lines.forEach(function(i) {
+        var val = i.attributes.y2.value;
+
+        if (rightY == val) {
+          d3.select(i)
+            .attr('opacity', function(d) {
+              if (d.airline === "Hawaiian Airlines Inc.") { return 2; }
+              else { return .5; }
+            })
+            .attr('stroke', function(d) {
+              if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+              else { return "gray"; }
+            })
+            .attr('stroke-width', 1)
+            .transition()
+            .duration(300)
+        };
+      })
+
+
+      var text = d3.selectAll("text")[0];
+      text.forEach(function(i) {
+        var val = i.attributes.y.value
+
+        if (leftY == val || rightY == val) {
+          d3.select(i)
+            .attr("font-size", "9px")
+            .attr("fill", function(d) {
+              if (d.airline === "Hawaiian Airlines Inc.") { return HawaiianColor; }
+            })
+            .transition()
+            .duration(300);
+        };
+      })
+    }
+
+
+  }
+
+
+  function adjustYAxis (data) {
+    // Adjustment algorithm to create space between overlapping elements
+    // Source from: http://bl.ocks.org/syntagmatic/4053096
+
+    var alpha = 5;
+    var spacing = 13;
+
+    // Sort data based on leftY coordinates
+    data.sort(function(a, b) {
+      return a.leftY - b.leftY;
+    })
+
+    var again = false;
+    data.forEach(function(a, i) {
+      data.slice(i+1).forEach(function(b) {
+        var dy = a.leftY - b.leftY
+        if (Math.abs(dy) < spacing) {
+          again = true;
+          var sign = dy > 0 ? 1 : -1;
+          a.leftY += sign*alpha;
+          b.leftY -= sign*alpha;
+        };
+      })
+    })
+
+
+    // Sort data based on rightY coordinates
+    data.sort(function(a, b) {
+      return a.rightY - b.rightY;
+    })
+
+    var again = false;
+    data.forEach(function(a, i) {
+      data.slice(i+1).forEach(function(b) {
+        var dy = a.rightY - b.rightY
+        if (Math.abs(dy) < spacing) {
+          again = true;
+          var sign = dy > 0 ? 1 : -1;
+          a.rightY += sign*alpha;
+          b.rightY -=sign*alpha;
+        };
+      })
+    })
+
+  }
+
+
+  });
+
+  </script>
+</body>
+</html>
