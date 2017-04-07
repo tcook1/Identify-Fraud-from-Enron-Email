@@ -1,7 +1,7 @@
 # Udacity-s-Data-Analyst-Nanodegree
 ## By Trevor Cook
 
-[certificate (1).pdf](https://github.com/tcook1/Udacity-s-Data-Analyst-Nanodegree/files/906720/certificate.1.pdf)
+
 
 
 
