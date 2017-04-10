@@ -1,7 +1,7 @@
 # Udacity-s-Data-Analyst-Nanodegree
 
 
-![Certificate](https://raw.githubusercontent.com/tcook1/Udacity-s-Data-Analyst-Nanodegree/edit/master/certificate.jpg)
+![Certificate](https://raw.githubusercontent.com/tcook1/Udacity-s-Data-Analyst-Nanodegree/certificate.pdf)
 
 
 ### About
