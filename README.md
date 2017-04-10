@@ -1,7 +1,7 @@
 # Udacity-s-Data-Analyst-Nanodegree
 
 
-![Udacity Data Analyst Nanodegree certificate](certificate.pdf)
+![Udacity Data Analyst Nanodegree certificate](certificate.png)
 
 ### About
 This repository contains my project work for Udacity's [Data Analyst Nanodegree](https://www.udacity.com/course/data-analyst-nanodegree--nd002).
